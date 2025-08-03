@@ -1,0 +1,80 @@
+@PACKAGE_INIT@
+
+# DateTime CMake Configuration File
+
+set(DateTime_VERSION "@PROJECT_VERSION@")
+
+# 检查依赖项
+include(CMakeFindDependencyMacro)
+
+# 检查C++11支持
+if(NOT CMAKE_CXX_STANDARD OR CMAKE_CXX_STANDARD LESS 11)
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
+# 包含目标文件
+include("${CMAKE_CURRENT_LIST_DIR}/DateTimeTargets.cmake")
+
+# 设置变量以保持向后兼容
+get_target_property(DateTime_INCLUDE_DIRS DateTime::datetime INTERFACE_INCLUDE_DIRECTORIES)
+set(DateTime_LIBRARIES DateTime::datetime)
+set(DateTime_FOUND TRUE)
+
+# 提供便利变量
+if(TARGET DateTime::datetime)
+    set(DateTime_STATIC_LIBRARY TRUE)
+else()
+    set(DateTime_STATIC_LIBRARY FALSE)
+endif()
+
+if(TARGET DateTime::datetime_shared)
+    set(DateTime_SHARED_LIBRARY TRUE)
+else()
+    set(DateTime_SHARED_LIBRARY FALSE)
+endif()
+
+# 检查组件
+set(_DateTime_REQUIRED_COMPONENTS ${DateTime_FIND_COMPONENTS})
+set(_DateTime_OPTIONAL_COMPONENTS "")
+
+foreach(_component ${_DateTime_REQUIRED_COMPONENTS})
+    if(_component STREQUAL "Static")
+        if(NOT TARGET DateTime::datetime)
+            set(DateTime_FOUND FALSE)
+            set(DateTime_NOT_FOUND_MESSAGE "Static library component not available")
+        endif()
+    elseif(_component STREQUAL "Shared")
+        if(NOT TARGET DateTime::datetime_shared)
+            set(DateTime_FOUND FALSE)
+            set(DateTime_NOT_FOUND_MESSAGE "Shared library component not available")
+        endif()
+    else()
+        set(DateTime_FOUND FALSE)
+        set(DateTime_NOT_FOUND_MESSAGE "Unknown component: ${_component}")
+    endif()
+endforeach()
+
+# 验证安装
+check_required_components(DateTime)
+
+# 提供使用信息
+if(DateTime_FOUND AND NOT DateTime_FIND_QUIETLY)
+    message(STATUS "Found DateTime: ${DateTime_VERSION}")
+    if(DateTime_STATIC_LIBRARY)
+        message(STATUS "  Static library: DateTime::datetime")
+    endif()
+    if(DateTime_SHARED_LIBRARY)
+        message(STATUS "  Shared library: DateTime::datetime_shared")
+    endif()
+    message(STATUS "  Include directories: ${DateTime_INCLUDE_DIRS}")
+endif()
+
+# 定义一个宏来简化链接
+macro(target_link_datetime target)
+    if(TARGET DateTime::datetime)
+        target_link_libraries(${target} DateTime::datetime)
+    else()
+        message(FATAL_ERROR "DateTime library not found")
+    endif()
+endmacro()
