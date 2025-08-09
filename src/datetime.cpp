@@ -1,5 +1,4 @@
 #include "datetime.h"
-#include <algorithm>
 #include <stdexcept>
 
 namespace datetime {
