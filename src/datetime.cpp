@@ -7,6 +7,32 @@ namespace datetime {
 DateTime::DateTime() : time_point_(std::chrono::system_clock::now()) {}
 
 DateTime::DateTime(int year, int month, int day, int hour, int minute, int second) {
+    if (month < 1 || month > 12) {
+        throw std::invalid_argument("Month must be between 1 and 12");
+    }
+
+    // 检查日期是否在有效范围内 
+    int days_in_month[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    if (isLeapYear(year)) {
+        // 闰年，2月有29天 
+        days_in_month[1] = 29;
+    }
+
+    if (day < 1 || day > days_in_month[month - 1]) {
+        throw std::invalid_argument("Invalid day for the given month");
+    }
+
+    // 检查小时、分钟、秒数范围 
+    if (hour < 0 || hour >= 24) {
+        throw std::invalid_argument("Hour must be between 0 and 23");
+    }
+    if (minute < 0 || minute >= 60) {
+        throw std::invalid_argument("Minute must be between 0 and 59");
+    }
+    if (second < 0 || second >= 60) {
+        throw std::invalid_argument("Second must be between 0 and 59");
+    }
+
     std::tm tm = {};
     tm.tm_year = year - 1900;
     tm.tm_mon = month - 1;
@@ -28,7 +54,7 @@ DateTime::DateTime(const std::chrono::system_clock::time_point& tp) : time_point
 DateTime::DateTime(time_t timestamp) : time_point_(std::chrono::system_clock::from_time_t(timestamp)) {}
 
 DateTime DateTime::now() {
-    return DateTime(std::chrono::system_clock::now());
+    return { std::chrono::system_clock::now() };
 }
 
 DateTime DateTime::fromString(const std::string& dateStr, const std::string& format) {
@@ -40,65 +66,195 @@ DateTime DateTime::fromString(const std::string& dateStr, const std::string& for
         throw std::invalid_argument("Failed to parse date string");
     }
 
+    // 手动检查日期的有效性 
+    if (tm.tm_mon < 0 || tm.tm_mon > 11) {
+        throw std::invalid_argument("Invalid month in date string");
+    }
+
+    int days_in_month[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    if (isLeapYear(tm.tm_year)) {
+        // 闰年，2月29天 
+        days_in_month[1] = 29;
+    }
+
+    if (tm.tm_mday < 1 || tm.tm_mday > days_in_month[tm.tm_mon]) {
+        throw std::invalid_argument("Invalid day for the given month");
+    }
+
+    // 检查小时、分钟、秒数 
+    if (tm.tm_hour < 0 || tm.tm_hour > 23) {
+        throw std::invalid_argument("Invalid hour in date string");
+    }
+    if (tm.tm_min < 0 || tm.tm_min > 59) {
+        throw std::invalid_argument("Invalid minute in date string");
+    }
+    if (tm.tm_sec < 0 || tm.tm_sec > 59) {
+        throw std::invalid_argument("Invalid second in date string");
+    }
+
     tm.tm_isdst = -1;
     time_t time = std::mktime(&tm);
     if (time == -1) {
         throw std::invalid_argument("Invalid date/time");
     }
 
-    return DateTime(std::chrono::system_clock::from_time_t(time));
+    return { std::chrono::system_clock::from_time_t(time) };
 }
 
 DateTime DateTime::fromTimestamp(time_t timestamp) {
-    return DateTime(timestamp);
+    return { timestamp };
 }
 
 int DateTime::year() const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm* tm = std::localtime(&time);
-    return tm->tm_year + 1900;
+
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
+    return tm.tm_year + 1900;
 }
 
 int DateTime::month() const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm* tm = std::localtime(&time);
-    return tm->tm_mon + 1;
+
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
+    return tm.tm_mon + 1;
 }
 
 int DateTime::day() const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm* tm = std::localtime(&time);
-    return tm->tm_mday;
+
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
+    return tm.tm_mday;
 }
 
 int DateTime::hour() const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm* tm = std::localtime(&time);
-    return tm->tm_hour;
+
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
+    return tm.tm_hour;
 }
 
 int DateTime::minute() const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm* tm = std::localtime(&time);
-    return tm->tm_min;
+
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
+    return tm.tm_min;
 }
 
 int DateTime::second() const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm* tm = std::localtime(&time);
-    return tm->tm_sec;
+
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
+    return tm.tm_sec;
 }
 
 int DateTime::weekday() const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm* tm = std::localtime(&time);
-    return tm->tm_wday;
+
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
+    return tm.tm_wday;
 }
 
 int DateTime::dayOfYear() const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm* tm = std::localtime(&time);
-    return tm->tm_yday + 1;
+
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
+    return tm.tm_yday + 1;
 }
 
 std::string DateTime::toString(const std::string& format) const {
@@ -111,11 +267,23 @@ std::string DateTime::isoformat() const {
 
 std::string DateTime::strftime(const std::string& format) const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm* tm = std::localtime(&time);
 
-    char buffer[256];
-    std::strftime(buffer, sizeof(buffer), format.c_str(), tm);
-    return std::string(buffer);
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
+    char buffer[256]{};
+    std::strftime(buffer, sizeof(buffer), format.c_str(), &tm);
+    return { buffer };
 }
 
 time_t DateTime::timestamp() const {
@@ -130,49 +298,84 @@ long long DateTime::milliseconds() const {
 DateTime DateTime::addYears(int years) const {
     std::tm tm = {};
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    tm = *std::localtime(&time);
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
+
     tm.tm_year += years;
     tm.tm_isdst = -1;
 
     time_t new_time = std::mktime(&tm);
-    return DateTime(std::chrono::system_clock::from_time_t(new_time));
+    return { std::chrono::system_clock::from_time_t(new_time) };
 }
 
 DateTime DateTime::addMonths(int months) const {
     std::tm tm = {};
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    tm = *std::localtime(&time);
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
 
     tm.tm_mon += months;
     tm.tm_isdst = -1;
 
     time_t new_time = std::mktime(&tm);
-    return DateTime(std::chrono::system_clock::from_time_t(new_time));
+    return { std::chrono::system_clock::from_time_t(new_time) };
 }
 
 DateTime DateTime::addDays(int days) const {
     auto new_time = time_point_ + std::chrono::hours(24 * days);
-    return DateTime(new_time);
+    return { new_time };
 }
 
 DateTime DateTime::addHours(int hours) const {
     auto new_time = time_point_ + std::chrono::hours(hours);
-    return DateTime(new_time);
+    return { new_time };
 }
 
 DateTime DateTime::addMinutes(int minutes) const {
     auto new_time = time_point_ + std::chrono::minutes(minutes);
-    return DateTime(new_time);
+    return { new_time };
 }
 
 DateTime DateTime::addSeconds(int seconds) const {
     auto new_time = time_point_ + std::chrono::seconds(seconds);
-    return DateTime(new_time);
+    return { new_time };
 }
 
 DateTime DateTime::replace(int year, int month, int day, int hour, int minute, int second) const {
     time_t time = std::chrono::system_clock::to_time_t(time_point_);
-    std::tm tm = *std::localtime(&time);
+
+    std::tm tm{};
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    // Windows 使用 localtime_s
+    if (localtime_s(&tm, &time) != 0) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#else
+    // Linux/macOS 使用 localtime_r
+    if (localtime_r(&time, &tm) == nullptr) {
+        throw std::invalid_argument("Failed to convert time to local time");
+    }
+#endif
 
     if (year != -1) tm.tm_year = year - 1900;
     if (month != -1) tm.tm_mon = month - 1;
@@ -183,7 +386,7 @@ DateTime DateTime::replace(int year, int month, int day, int hour, int minute, i
 
     tm.tm_isdst = -1;
     time_t new_time = std::mktime(&tm);
-    return DateTime(std::chrono::system_clock::from_time_t(new_time));
+    return { std::chrono::system_clock::from_time_t(new_time) };
 }
 
 bool DateTime::operator==(const DateTime& other) const {
@@ -217,8 +420,9 @@ std::chrono::system_clock::time_point DateTime::getTimePoint() const {
 // TimeDelta 实现 
 TimeDelta::TimeDelta() : duration_(0) {}
 
-TimeDelta::TimeDelta(int days, int hours, int minutes, int seconds) {
-    duration_ = std::chrono::seconds(days * 24 * 3600 + hours * 3600 + minutes * 60 + seconds);
+TimeDelta::TimeDelta(int days, int hours, int minutes, int seconds)
+	: duration_(std::chrono::seconds(days * 24 * 3600 + hours * 3600 + minutes * 60 + seconds)) {
+    //duration_ = std::chrono::seconds(days * 24 * 3600 + hours * 3600 + minutes * 60 + seconds);
 }
 
 TimeDelta::TimeDelta(const std::chrono::seconds& duration) : duration_(duration) {}
@@ -236,19 +440,19 @@ int TimeDelta::seconds() const {
 }
 
 TimeDelta TimeDelta::operator+(const TimeDelta& other) const {
-    return TimeDelta(duration_ + other.duration_);
+    return { duration_ + other.duration_ };
 }
 
 TimeDelta TimeDelta::operator-(const TimeDelta& other) const {
-    return TimeDelta(duration_ - other.duration_);
+    return { duration_ - other.duration_ };
 }
 
 TimeDelta TimeDelta::operator*(int multiplier) const {
-    return TimeDelta(duration_ * multiplier);
+    return { duration_ * multiplier };
 }
 
 TimeDelta TimeDelta::operator/(int divisor) const {
-    return TimeDelta(duration_ / divisor);
+    return { duration_ / divisor };
 }
 
 bool TimeDelta::operator==(const TimeDelta& other) const {
@@ -296,18 +500,18 @@ std::string TimeDelta::toString() const {
 // DateTime 和 TimeDelta 之间的运算 
 DateTime operator+(const DateTime& dt, const TimeDelta& td) {
     auto new_time = dt.getTimePoint() + std::chrono::seconds(td.totalSeconds());
-    return DateTime(new_time);
+    return { new_time };
 }
 
 DateTime operator-(const DateTime& dt, const TimeDelta& td) {
     auto new_time = dt.getTimePoint() - std::chrono::seconds(td.totalSeconds());
-    return DateTime(new_time);
+    return { new_time };
 }
 
 TimeDelta operator-(const DateTime& dt1, const DateTime& dt2) {
     auto diff = dt1.getTimePoint() - dt2.getTimePoint();
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(diff);
-    return TimeDelta(seconds);
+    return { seconds };
 }
 
 // 工具函数 

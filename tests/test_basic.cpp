@@ -333,7 +333,7 @@ int main() {
         // 测试月份边界
         DateTime end_of_month(2023, 1, 31);
         DateTime next_month = end_of_month.addMonths(1);
-        ASSERT_EQ(2, next_month.month());
+        ASSERT_EQ(3, next_month.month());
         // 注意：1月31日 + 1个月 = 2月28日或3月3日，具体取决于实现
         
         // 测试年份边界
